@@ -1,0 +1,30 @@
+```{r}
+library(glmnet)
+library(Rcpp)
+```
+
+
+```{r}
+body_fat_data <- read.table("https://web.mst.edu/~wenx/teaching/stat5346/data/bodyfat.txt", header=T)
+attach(body_fat_data)
+```
+
+```{r}
+baseline <- lm(Y~X1+X2+X3)
+summary(baseline)
+```
+
+```{r}
+x <- data.matrix(body_fat_data[, c('X1', 'X2', 'X3')])
+```
+
+
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+ridge_model <- glmnet(x, Y, alpha=0, lambda=lambdas)
+print(summary(ridge_model))
+ridge_predictions <- predict(ridge_model, newx=x)
+plot(Y, ridge_predictions[1:20])
+```
+
+For each example, plot
