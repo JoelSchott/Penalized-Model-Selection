@@ -1,0 +1,5 @@
+
+
+res <- glmnet(X, y, alpha = 0, lambda = test_lambdas, standardize = FALSE)
+plot(res, xvar = "lambda")
+legend("topright", lwd = 1, col = 1:6, legend = colnames(X), cex = .4)
