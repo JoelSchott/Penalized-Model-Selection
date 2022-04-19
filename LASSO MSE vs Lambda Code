@@ -1,1 +1,15 @@
+library(glmnet) 
+library(dplyr)
+library(psych)
+set.seed(123)
 
+data <- read.table("https://web.mst.edu/~wenx/teaching/stat5346/data/bodyfat.txt", header=T)
+attach(data)
+
+y <- data %>% select(Y) %>% scale(center = TRUE, scale = FALSE) %>% as.matrix()
+X <- data %>% select(-Y) %>% as.matrix()
+
+test_lambdas <- 10^seq(-3, 5, length.out = 100)
+ridge_cv <- cv.glmnet(X, y, alpha = 1, lambda = test_lambdas, standardize = TRUE, nfolds = 10)
+
+plot(ridge_cv)
