@@ -1,11 +1,12 @@
 ```{r}
 library(glmnet)
 library(Rcpp)
+library(plotmo)
 ```
 
 
 ```{r}
-body_fat_data <- read.table("https://web.mst.edu/~wenx/teaching/stat5346/data/bodyfat.txt", header=T)
+body_fat_data <- read.table("body_fat_data.txt", header=T)
 attach(body_fat_data)
 ```
 
@@ -21,10 +22,83 @@ x <- data.matrix(body_fat_data[, c('X1', 'X2', 'X3')])
 
 ```{r}
 lambdas <- 10^seq(2, -3, by = -.1)
-ridge_model <- glmnet(x, Y, alpha=0, lambda=lambdas)
-print(summary(ridge_model))
-ridge_predictions <- predict(ridge_model, newx=x)
-plot(Y, ridge_predictions[1:20])
+alphas = seq(0, 1, by=0.1)
+for (alpha in alphas) {
+    elastic_net_model <- glmnet(x, Y, alpha=alpha, lambda=lambdas)
+    coefs <- as.matrix(coef(elastic_net_model, complete=TRUE))
+    coefs[is.na(coefs)] = 0
+
+    predictions <- predict(elastic_net_model, newx=x)
+    
+    for (i in seq(1, length(lambdas))) {
+        coef_start <- (i*4) - 3
+        intercept <- coefs[coef_start]
+        x1 <- coefs[coef_start+1]
+        x2 <- coefs[coef_start+2]
+        x3 <- coefs[coef_start+3]
+        
+        predictions_start <- (i*20) - 19
+        lambda_predictions <- predictions[predictions_start:predictions_start+19]
+        mse <- sum((lambda_predictions - x)^2) / length(x)
+        cat(alpha,lambdas[i],intercept,x1,x2,x3,mse,'\n')
+    }
+}
+
 ```
 
-For each example, plot
+```{r}
+art_data <- read.table("artificial_data.csv", header=T, sep=",")
+attach(art_data)
+```
+
+```{r}
+cor_mat <- cor(art_data)
+round(cor_mat, 2)
+pairs(art_data)
+```
+```{r}
+standard <- lm(y~x1+x2+x3)
+summary(standard)
+```
+
+
+```{r}
+x <- data.matrix(art_data[, c('x1', 'x2', 'x3')])
+cv_ridge_model <- cv.glmnet(x, y, alpha=0, lambda=lambdas)
+plot(cv_ridge_model)
+#ridge_model <- glmnet(x, y, alpha=0, lambda=cv_ridge_model$lambda.min)
+ridge_model <- glmnet(x, y, alpha=0, lambda=lambdas)
+plot_glmnet(ridge_model)
+```
+```{r}
+cv_lasso_model <- cv.glmnet(x, y, alpha=1, lambda=lambdas)
+plot(cv_lasso_model)
+
+lasso_model <- glmnet(x, y, alpha=1, lambda=lambdas)
+plot_glmnet(lasso_model)
+```
+
+
+```{r}
+cv_elastic_net_model <- cv.glmnet(x, y, alpha=0.5, lambda=lambdas)
+plot(cv_elastic_net_model)
+
+elastic_net_model <- glmnet(x, y, alpha=0.5, lambda=lambdas)
+plot_glmnet(elastic_net_model)
+```
+```{r}
+plot(standard$fitted, y, xlim=c(0, 4), ylim=c(0, 4))
+abline(0, 1)
+
+ridge_predictions <- predict(glmnet(x, y, lambda=cv_ridge_model$lambda.min), newx=x)
+plot(ridge_predictions, y, xlim=c(0,4), ylim=c(0, 4))
+abline(0, 1)
+
+lasso_predictions <- predict(glmnet(x, y, lambda=cv_lasso_model$lambda.min), newx=x)
+plot(lasso_predictions, y, xlim=c(0,4), ylim=c(0, 4))
+abline(0, 1)
+
+elastic_net_predictions <- predict(glmnet(x, y, lambda=cv_elastic_net_model$lambda.min), newx=x)
+plot(elastic_net_predictions, y, xlim=c(0,4), ylim=c(0, 4))
+abline(0, 1)
+```
