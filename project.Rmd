@@ -87,7 +87,8 @@ elastic_net_model <- glmnet(x, y, alpha=0.5, lambda=lambdas)
 plot_glmnet(elastic_net_model)
 ```
 ```{r}
-plot(standard$fitted, y, xlim=c(0, 4), ylim=c(0, 4))
+unpenalized <- standard$fitted
+plot(unpenalized, y, xlim=c(0, 4), ylim=c(0, 4))
 abline(0, 1)
 
 ridge_predictions <- predict(glmnet(x, y, lambda=cv_ridge_model$lambda.min), newx=x)

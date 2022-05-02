@@ -1,0 +1,116 @@
+```{r}
+library(pls)
+library(glmnet)
+library(caret)
+```
+
+```{r}
+plot_results <- function(predictions, labels) {
+    view_min <- min(min(predictions), min(labels))
+    view_max <- max(max(predictions), max(labels))
+    plot(predictions, labels, xlim=c(view_min, view_max), ylim=c(view_min, view_max))
+    abline(0, 1)
+}
+```
+
+```{r}
+data("yarn")
+yarn_data <- as.data.frame(yarn$NIR)
+yarn_labels <- yarn$density
+```
+
+```{r}
+yarn_train_data <- yarn_data[yarn$train,]
+yarn_train_labels <- yarn_labels[yarn$train]
+yarn_test_data <- yarn_data[!yarn$train,]
+yarn_test_labels <- yarn_labels[!yarn$train]
+```
+
+```{r}
+test_mse <- function(model) {
+    predictions <- predict(model, yarn_test_data)
+    plot_results(predictions, yarn_test_labels)
+    mean((predictions - yarn_test_labels)^2)
+}
+```
+
+```{r}
+standard_fit <- lm(yarn_train_labels ~ ., data=yarn_train_data)
+```
+
+```{r}
+test_mse(standard_fit)
+```
+
+```{r}
+yarn_train_x <- data.matrix(yarn_train_data)
+yarn_test_x <- data.matrix(yarn_test_data)
+```
+
+```{r}
+glm_test_mse <- function(model) {
+    predictions <- predict(model, newx=yarn_test_x)
+    plot_results(predictions, yarn_test_labels)
+    mean((predictions - yarn_test_labels)^2)
+}
+```
+
+```{r}
+lambdas <- 10^seq(2, -3, by=-.1)
+```
+
+```{r}
+cv_ridge_model <- cv.glmnet(yarn_train_x, yarn_train_labels, alpha=0, lambda=lambdas)
+print(cv_ridge_model$lambda.min)
+ridge_model <- glmnet(yarn_train_x, yarn_train_labels, alpha=0, lambda=cv_ridge_model$lambda.min)
+```
+
+```{r}
+glm_test_mse(ridge_model)
+```
+
+```{r}
+cv_lasso_model <- cv.glmnet(yarn_train_x, yarn_train_labels, alpha=1, lambda=lambdas)
+print(cv_lasso_model$lambda.min)
+lasso_model <- glmnet(yarn_train_x, yarn_train_labels, alpha=1, lambda=cv_lasso_model$lambda.min)
+```
+
+```{r}
+glm_test_mse(lasso_model)
+```
+
+```{r}
+cv_elastic_net_model <- cv.glmnet(yarn_train_x, yarn_train_labels, alpha=0.5, lambda=lambdas)
+print(cv_elastic_net_model$lambda.min)
+elastic_net_model <- glmnet(yarn_train_x, yarn_train_labels, alpha=0.5, lambda=cv_elastic_net_model$lambda.min)
+```
+
+```{r}
+glm_test_mse(elastic_net_model)
+```
+
+```{r}
+train_control <- trainControl(method="cv", number=10)
+param_grid <- expand.grid(alpha=seq(0, 1, by=0.1),
+                          lambda=lambdas)
+
+cv_elastic_net_model <- train(y=yarn_train_labels,
+                              x=yarn_train_x,
+                              method="glmnet", 
+                              preProcess=c("center", "scale"),
+                              tuneGrid=param_grid,
+                              trControl=train_control,
+                              metric="RMSE",
+                              maximize=FALSE)
+```
+
+```{r}
+best_alpha <- cv_elastic_net_model$bestTune$alpha
+best_lambda <- cv_elastic_net_model$bestTune$lambda
+elastic_net <- glmnet(yarn_train_x, yarn_train_labels, alpha=best_alpha, lambda=best_lambda)
+```
+
+```{r}
+glm_test_mse(elastic_net)
+```
+
